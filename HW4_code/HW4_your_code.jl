@@ -29,7 +29,6 @@ end
 # It should not allocate any memory.  
 function householder_QR!(A)
     # YOUR CODE HERE
-    return QR
 end
 
 #----------------------------------------

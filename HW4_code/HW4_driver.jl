@@ -1,7 +1,7 @@
 import Pkg.instantiate
 instantiate()
 using BenchmarkTools: @ballocated
-using LinearAlgebra: I, norm, istriu, qr
+using LinearAlgebra: I, norm, istriu, triu, qr
 using CairoMakie
 include("HW4_your_code.jl")
 
@@ -13,7 +13,7 @@ include("HW4_your_code.jl")
 A = randn(30, 20) 
 b = randn(30)
 Q, R = classical_gram_schmidt(A) 
-@assert Q * Q' ≈ I
+@assert Q' * Q ≈ I
 @assert Q * R ≈ A
 
 #----------------------------------------
@@ -23,7 +23,7 @@ Q, R = classical_gram_schmidt(A)
 A = randn(30, 20) 
 b = randn(30)
 Q, R = modified_gram_schmidt(A) 
-@assert Q * Q' ≈ I
+@assert Q' * Q ≈ I
 @assert Q * R ≈ A
 
 #----------------------------------------
@@ -37,7 +37,7 @@ A = randn(25, 20)
 true_R = Matrix(qr(A).R)
 householder_QR!(A)
 # Checks if the R part of the factorization is correct
-@assert R ≈ triu(A)
+@assert vcat(true_R, zeros(5,20)) ≈ triu(A)
 
 #----------------------------------------
 # Problem d
@@ -53,7 +53,7 @@ out_mul = randn(25)
 out_div = randn(20)
 
 allocated_memory_mul = @ballocated  householder_QR_mul!(out_mul, x, QR)
-allocated_memory_div = @ballocated  householder_QR_div(out_div, b, QR)
+allocated_memory_div = @ballocated  householder_QR_div!(out_div, b, QR)
 @assert allocated_memory_mul == 0
 @assert allocated_memory_div == 0
 
