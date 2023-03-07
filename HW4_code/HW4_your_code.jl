@@ -52,29 +52,45 @@ end
 #----------------------------------------
 # Problem c
 #----------------------------------------
+function my_dot!(k, m, A)
+    temp = 0
+    for i=k:m
+        temp += A[i,k]^2
+    end
+    return temp
+end
+
 # This function takes in a matrix A 
 # and computes its QR factorization in place,
 # using householder reflections.
 # It should not allocate any memory.  
 function householder_QR!(A)
-    # YOUR CODE HERE
     m = size(A, 1)
     n = size(A, 2)
-    vA = zeros(n)
-    kend = (m > n ? n : m-1)
-    for k=1:kend
-        beta, v = house(A[k:end, k])
-        for j=k:n
-            vA[j] = 0
-            for i=k:m
-                vA[j] += v[i-k+1] * A[i,j]
+    
+    for k=1:n
+        norm_of_x = my_dot!(k, m, A)^0.5
+        A_sign = sign(A[k,k])
+
+        A[k, k] += A_sign * norm_of_x
+        for i=m:-1:k
+            A[i,k] /= A[k,k]
+        end
+
+        v_inner = 2 / my_dot!(k, m, A)
+
+        for j=n:-1:k+1
+            col_temp = 0
+            for l=k:m
+                col_temp += A[l, k] * A[l, j]
             end
-            vA[j] *= beta
+            col_temp *= v_inner
+
+            for i=k:m
+                A[i,j] -= A[i,k]*col_temp
+            end
         end
-        for j=k:n, i=k:m
-            A[i,j] -= v[i-k+1] * vA[j]
-        end
-        A[k+1:end,k] = v[2:end]
+        A[k,k] = -A_sign * norm_of_x
     end
 end
 
@@ -88,9 +104,75 @@ end
 # They should not allocate any memory and instead
 # use the preallocated output vector to record the result. 
 function householder_QR_mul!(out, x, QR)
-    # YOUR CODE HERE
+    m = size(QR,1)
+    n = length(x)
+    for i=1:length(out)
+        out[i] = 0
+    end
+    # First we do Rx=out
+    for i=1:n
+        for j = i:n
+            out[i] += QR[i,j] * x[j]
+        end
+    end
+
+    # Then we do Qout = out
+    for k=n:-1:1
+        v_inner = 1
+        for i=k+1:m
+            v_inner += QR[i,k]^2
+        end
+        v_inner = 2 / v_inner
+
+        col_temp = out[k]
+
+        for l=k+1:m
+            col_temp += out[l] * QR[l, k]
+        end
+        col_temp *= v_inner
+
+        out[k] -= col_temp
+        for i=k+1:m
+            out[i] -= QR[i, k]*col_temp
+        end
+    end
 end
 
 function householder_QR_div!(out, b, QR)
-    # YOUR CODE HERE
+    # First we calculate y=Q*b
+    m = size(QR,1)
+    n = size(QR,2)
+
+    for k=1:n
+        v_inner = 1
+        for i=k+1:m
+            v_inner += QR[i,k]^2
+        end
+        v_inner = 2 / v_inner
+
+        col_temp = b[k]
+
+        for l=k+1:m
+            col_temp += b[l] * QR[l, k]
+        end
+        col_temp *= v_inner
+
+        b[k] -= col_temp
+        for i=k+1:m
+           b[i] -= QR[i, k]*col_temp
+        end
+    end
+
+    # Assign b to out
+    for i=1:n
+        out[i] = b[i]
+    end
+
+    # Solving Rx=out using back substitution
+    for i=n:-1:1
+        for j = i+1:n
+            out[i] -= QR[i,j] * out[j]
+        end
+        out[i] /= QR[i, i]
+    end
 end

@@ -80,3 +80,53 @@ householder_QR_div!(out_div, b, QR)
 # Problem e
 #----------------------------------------
 # YOUR CODE GOES HERE
+size_list = 2 .^ (2 : 12)
+
+# instantiate error arrays
+error_true = Float64[]
+error_cGS = Float64[]
+error_mGS = Float64[]
+error_house = Float64[]
+
+function make_high_cond(cond_num, mat_size)
+    D = 1.0 * I(mat_size)
+    D[1,1] = cond_num
+    for i=2:size(D, 1)-1
+        D[i, i] = rand()*(cond_num-1) + 1
+    end
+
+    L = randn(mat_size, mat_size)
+    return L * D * L'
+end
+
+for m = size_list
+    mat_size = 2^8
+    A = make_high_cond(m, mat_size)
+    b = randn(mat_size)
+    A_original = deepcopy(A)
+    b_original = deepcopy(b)
+    x_true = A\b
+
+    Q_cGS, R_cGS = classical_gram_schmidt(A)
+    Q_mGS, R_mGS = modified_gram_schmidt(A)
+    householder_QR!(A)
+    QR_house = A
+
+    x_house = zeros(mat_size)
+
+    x_cGS = inv(R_cGS) * Q_cGS' * b
+    x_mGS = inv(R_mGS) * Q_mGS' * b
+    householder_QR_div!(x_house, b, QR_house)
+
+    push!(error_true, norm(A_original * x_true - b_original)/norm(b_original))
+    push!(error_cGS, norm(A_original * x_cGS - b_original)/norm(b_original))
+    push!(error_mGS, norm(A_original * x_mGS - b_original)/norm(b_original))
+    push!(error_house, norm(A_original * x_house - b_original)/norm(b_original))
+end
+
+error_plot = scatter(size_list, error_true, label="Reference Error", axis=(yscale=log10, xscale=log2, xlabel="Condition Number, K", ylabel="Relative Error"))
+scatter!(size_list, error_cGS, label="Classic Gram-Schmidt")
+scatter!(size_list, error_mGS, label="Modified Gram-Schmidt")
+scatter!(size_list, error_house, label="Householder")
+axislegend(position=:lt)
+save("cond_num_compare.pdf", error_plot)
