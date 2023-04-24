@@ -55,4 +55,42 @@ practical_QR_with_shifts!(T,shift)
 # Problem d
 #----------------------------------------
 # YOUR CODE GOES HERE
+m = 32
+A = rand(m,m)
+Q,_ = qr(A)
+λ = 3 .^ range(0,m-1)
+Σ = diagm(λ)
+T = Q'Σ*Q
+hessenberg_form!(T)
+T_single = copy(T)
+T_wilk = copy(T)
 
+T_hist_single = []
+T_conv_single = []
+T_hist_wilk = []
+T_conv_wilk = []
+
+practical_QR_with_shifts_hist!(T_single, T_hist_single, T_conv_single, "single")
+practical_QR_with_shifts_hist!(T_wilk, T_hist_wilk, T_conv_wilk, "wilkinson")
+
+max_eigs_single = Float64[]
+max_eigs_wilk = Float64[]
+
+for t in T_hist_single
+    sort!(t)
+    push!(max_eigs_single, t[end])
+end
+for t in T_hist_wilk
+    sort!(t)
+    push!(max_eigs_wilk, t[end])
+end
+
+max_eig_error_single = abs.(max_eigs_single .- λ[end])./λ[end]
+max_eig_error_wilk = abs.(max_eigs_wilk .- λ[end])./λ[end]
+
+
+error_plot = scatter(1:length(max_eigs_single), max_eig_error_single, label="Single Shift", axis=(yscale=log10, xlabel="iteration, k", ylabel="Normalized Eigenvalue Error"))
+scatter!(1:length(max_eig_error_wilk), max_eig_error_wilk, label="Wilkinson Shift")
+xlims!(0, 30)
+axislegend(position=:rt)
+save("compare.pdf", error_plot)
